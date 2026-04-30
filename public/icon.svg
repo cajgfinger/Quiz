@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="QuizCM">
+  <rect width="512" height="512" rx="112" fill="#0f0e17"/>
+  <circle cx="390" cy="108" r="54" fill="#FFD93D"/>
+  <circle cx="116" cy="396" r="64" fill="#4ECDC4"/>
+  <rect x="84" y="132" width="344" height="248" rx="42" fill="#f8f7ff"/>
+  <path d="M154 220c0-47 37-82 92-82 57 0 95 33 95 80 0 31-14 52-45 70-25 15-33 27-33 52v7h-67v-12c0-39 14-62 49-83 22-13 30-23 30-38 0-18-14-30-35-30-24 0-39 15-40 40h-46z" fill="#6366f1"/>
+  <circle cx="231" cy="382" r="27" fill="#ef4444"/>
+  <text x="256" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="800" fill="#ffffff">CM</text>
+</svg>

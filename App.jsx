@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ALL_QUESTIONS, filterQuestions } from "./data/questions";
+import { ALL_QUESTIONS, filterQuestions } from "./data/questions/index";
 import { TAGS, TAG_MAP, CATEGORY_LABELS, tagsByCategory } from "./data/tags";
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -190,8 +190,14 @@ body{font-family:'Nunito',sans-serif;background:#0f0e17;min-height:100vh;display
 .tw-av{font-size:34px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
 .tw-name{font-family:'Baloo 2',cursive;font-size:17px;font-weight:800}
 .tw-sub{font-size:12px;font-weight:600;color:#aaa}
-.tag-group{display:flex;flex-direction:column;gap:7px}
+.filter-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.filter-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.filter-count{font-size:11px;font-weight:800;color:#aaa;background:white;border:2px solid #eeecff;border-radius:999px;padding:4px 8px;white-space:nowrap}
+.tag-group{display:flex;flex-direction:column;gap:8px;background:white;border:2px solid #eeecff;border-radius:14px;padding:11px 12px;box-shadow:0 2px 7px rgba(0,0,0,.04)}
+.tag-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tag-group-count{font-size:10px;font-weight:800;color:#b7b3c7;background:#f8f7ff;border-radius:999px;padding:2px 7px;white-space:nowrap}
 .tag-row{display:flex;flex-wrap:wrap;gap:6px}
+.tag-empty{background:white;border:2px dashed #e4e2f5;border-radius:14px;padding:14px;color:#aaa;font-size:12px;font-weight:700;text-align:center}
 .q-counter-bar{background:white;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;bottom:0;z-index:10}
 .qc-info{display:flex;flex-direction:column;gap:2px}
 .qc-num{font-family:'Baloo 2',cursive;font-size:22px;font-weight:800;line-height:1}
@@ -456,6 +462,15 @@ export default function App() {
     return counts;
   }, [selectedTags]);
 
+  const visibleGroups = useMemo(() => {
+    return Object.entries(groups)
+      .map(([cat, tags]) => [
+        cat,
+        tags.filter(t => selectedTags.includes(t.id) || tagCounts[t.id] > 0),
+      ])
+      .filter(([, tags]) => tags.length > 0);
+  }, [groups, selectedTags, tagCounts]);
+
   // ── Score key for current selection ──
   const currentScoreKey = tagKey(selectedTags);
   const modeScores = {
@@ -584,22 +599,41 @@ export default function App() {
               </div>
             )}
 
-            {/* Tag groups */}
-            {Object.entries(groups).map(([cat, tags]) => (
-              <div key={cat} className="tag-group">
-                <div className="slabel">{CATEGORY_LABELS[cat]}</div>
-                <div className="tag-row">
-                  {tags.map(t => (
-                    <TagPill
-                      key={t.id} tag={t}
-                      selected={selectedTags.includes(t.id)}
-                      count={tagCounts[t.id]}
-                      onClick={() => toggleTag(t.id)}
-                    />
-                  ))}
-                </div>
+            <div className="filter-head">
+              <div className="stitle">Filtres</div>
+              <div className="filter-actions">
+                <span className="filter-count">{selectedTags.length} actif{selectedTags.length > 1 ? "s" : ""}</span>
+                {selectedTags.length > 0 && (
+                  <button className="clear-btn" onClick={() => setSelectedTags([])}>Tout effacer</button>
+                )}
               </div>
-            ))}
+            </div>
+
+            {/* Tag groups */}
+            {visibleGroups.length > 0 ? (
+              visibleGroups.map(([cat, tags]) => (
+                <div key={cat} className="tag-group">
+                  <div className="tag-group-head">
+                    <div className="slabel">{CATEGORY_LABELS[cat]}</div>
+                    <div className="tag-group-count">{tags.length}</div>
+                  </div>
+                  <div className="tag-row">
+                    {tags.map(t => (
+                      <TagPill
+                        key={t.id} tag={t}
+                        selected={selectedTags.includes(t.id)}
+                        count={tagCounts[t.id]}
+                        onClick={() => toggleTag(t.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="tag-empty">
+                Aucun tag compatible avec cette sélection.
+              </div>
+            )}
 
             {/* Sticky bottom bar */}
             <div className="q-counter-bar" style={{ "--sc": primaryColor }}>

@@ -1,9 +1,12 @@
 // ── TAG DEFINITIONS ───────────────────────────────────────────────────────────
 // Each tag: { id, label, color, bg, category }
-// Categories: "niveau" | "matiere" | "theme" | "langue" | "langue_theme"
+// Categories: "niveau" | "matiere" | "theme" | "univers" | "langue" | "langue_theme"
 
 export const TAGS = [
   // ── Niveau ──
+  { id: "cp",       label: "CP",          color: "#14b8a6", bg: "#f0fdfa", category: "niveau" },
+  { id: "ce1",      label: "CE1",         color: "#0ea5e9", bg: "#f0f9ff", category: "niveau" },
+  { id: "ce2",      label: "CE2",         color: "#3b82f6", bg: "#eff6ff", category: "niveau" },
   { id: "cm1",      label: "CM1",         color: "#6366f1", bg: "#eef2ff", category: "niveau" },
   { id: "cm2",      label: "CM2",         color: "#8b5cf6", bg: "#f5f3ff", category: "niveau" },
   { id: "college",  label: "Collège",     color: "#2563eb", bg: "#eff6ff", category: "niveau" },
@@ -18,7 +21,12 @@ export const TAGS = [
   { id: "geo",      label: "Géographie",  color: "#22c55e", bg: "#f0fdf4", category: "matiere" },
   { id: "physique", label: "Physique",     color: "#06b6d4", bg: "#ecfeff", category: "matiere" },
   { id: "astro",    label: "Astronomie",   color: "#4f46e5", bg: "#eef2ff", category: "matiere" },
+  { id: "svt",      label: "SVT",          color: "#16a34a", bg: "#f0fdf4", category: "matiere" },
+  { id: "chimie",   label: "Chimie",       color: "#9333ea", bg: "#faf5ff", category: "matiere" },
+  { id: "techno",   label: "Technologie",  color: "#475569", bg: "#f8fafc", category: "matiere" },
+  { id: "emc",      label: "EMC",          color: "#0f766e", bg: "#f0fdfa", category: "matiere" },
   { id: "langues",  label: "Langues",     color: "#a855f7", bg: "#faf5ff", category: "matiere" },
+  { id: "culture",  label: "Culture",      color: "#db2777", bg: "#fdf2f8", category: "matiere" },
 
   // ── Thèmes Maths ──
   { id: "multiplication", label: "Multiplication", color: "#ef4444", bg: "#fff1f2", category: "theme" },
@@ -28,6 +36,12 @@ export const TAGS = [
   { id: "decimaux",       label: "Décimaux",        color: "#ef4444", bg: "#fff1f2", category: "theme" },
   { id: "mesures",        label: "Mesures",         color: "#ef4444", bg: "#fff1f2", category: "theme" },
   { id: "calcul",         label: "Calcul",          color: "#ef4444", bg: "#fff1f2", category: "theme" },
+  { id: "numeration",     label: "Numération",      color: "#ef4444", bg: "#fff1f2", category: "theme" },
+  { id: "problemes",      label: "Problèmes",       color: "#ef4444", bg: "#fff1f2", category: "theme" },
+  { id: "proportionnalite", label: "Proportionnalité", color: "#ef4444", bg: "#fff1f2", category: "theme" },
+  { id: "statistiques",   label: "Statistiques",    color: "#ef4444", bg: "#fff1f2", category: "theme" },
+  { id: "probabilites",   label: "Probabilités",    color: "#ef4444", bg: "#fff1f2", category: "theme" },
+  { id: "algebre",        label: "Algèbre",         color: "#ef4444", bg: "#fff1f2", category: "theme" },
 
   // ── Thèmes Ortho ──
   { id: "conjugaison",  label: "Conjugaison",  color: "#0ea5e9", bg: "#e0f2fe", category: "theme" },
@@ -46,6 +60,10 @@ export const TAGS = [
   { id: "resistance",  label: "Résistance",    color: "#f59e0b", bg: "#fef3c7", category: "theme" },
   { id: "esclavage",   label: "Esclavage",     color: "#f59e0b", bg: "#fef3c7", category: "theme" },
   { id: "moyen_age",   label: "Moyen Âge",     color: "#f59e0b", bg: "#fef3c7", category: "theme" },
+  { id: "prehistoire", label: "Préhistoire",   color: "#f59e0b", bg: "#fef3c7", category: "theme" },
+  { id: "antiquite",   label: "Antiquité",     color: "#f59e0b", bg: "#fef3c7", category: "theme" },
+  { id: "renaissance", label: "Renaissance",   color: "#f59e0b", bg: "#fef3c7", category: "theme" },
+  { id: "contemporain", label: "Monde contemporain", color: "#f59e0b", bg: "#fef3c7", category: "theme" },
 
   // ── Thèmes Géo France ──
   { id: "departements", label: "Départements", color: "#22c55e", bg: "#dcfce7", category: "theme" },
@@ -57,6 +75,11 @@ export const TAGS = [
   { id: "drapeaux",     label: "Drapeaux",     color: "#22c55e", bg: "#dcfce7", category: "theme" },
   { id: "relief",       label: "Relief",       color: "#22c55e", bg: "#dcfce7", category: "theme" },
   { id: "mers",         label: "Mers & Océans", color: "#22c55e", bg: "#dcfce7", category: "theme" },
+  { id: "climat",       label: "Climat",       color: "#22c55e", bg: "#dcfce7", category: "theme" },
+  { id: "population",   label: "Population",   color: "#22c55e", bg: "#dcfce7", category: "theme" },
+  { id: "cartes",       label: "Cartes",       color: "#22c55e", bg: "#dcfce7", category: "theme" },
+  { id: "ressources",   label: "Ressources",   color: "#22c55e", bg: "#dcfce7", category: "theme" },
+  { id: "environnement", label: "Environnement", color: "#22c55e", bg: "#dcfce7", category: "theme" },
 
   // ── Thèmes Physique ──
   { id: "mecanique",          label: "Mécanique",          color: "#06b6d4", bg: "#cffafe", category: "theme" },
@@ -71,6 +94,37 @@ export const TAGS = [
   { id: "galaxies",             label: "Galaxies",             color: "#4f46e5", bg: "#e0e7ff", category: "theme" },
   { id: "exploration_spatiale", label: "Exploration spatiale", color: "#4f46e5", bg: "#e0e7ff", category: "theme" },
   { id: "phenomenes",           label: "Phénomènes",           color: "#4f46e5", bg: "#e0e7ff", category: "theme" },
+
+  // ── Thèmes SVT ──
+  { id: "anatomie",              label: "Anatomie",              color: "#16a34a", bg: "#dcfce7", category: "theme" },
+  { id: "svt_animaux",           label: "Animaux (SVT)",         color: "#16a34a", bg: "#dcfce7", category: "theme" },
+  { id: "plantes",               label: "Plantes",               color: "#16a34a", bg: "#dcfce7", category: "theme" },
+  { id: "ecosystemes",           label: "Écosystèmes",           color: "#16a34a", bg: "#dcfce7", category: "theme" },
+  { id: "sante",                 label: "Santé",                 color: "#16a34a", bg: "#dcfce7", category: "theme" },
+  { id: "terre_volcans_seismes", label: "Terre, volcans & séismes", color: "#16a34a", bg: "#dcfce7", category: "theme" },
+
+  // ── Thèmes Chimie ──
+  { id: "etats_matiere",       label: "États de la matière", color: "#9333ea", bg: "#f3e8ff", category: "theme" },
+  { id: "melanges",            label: "Mélanges",            color: "#9333ea", bg: "#f3e8ff", category: "theme" },
+  { id: "atomes",              label: "Atomes",              color: "#9333ea", bg: "#f3e8ff", category: "theme" },
+  { id: "reactions_chimiques", label: "Réactions chimiques", color: "#9333ea", bg: "#f3e8ff", category: "theme" },
+
+  // ── Thèmes Informatique / Technologie ──
+  { id: "algorithmique",      label: "Algorithmique",       color: "#475569", bg: "#f1f5f9", category: "theme" },
+  { id: "logique",            label: "Logique",             color: "#475569", bg: "#f1f5f9", category: "theme" },
+  { id: "securite_numerique", label: "Sécurité numérique",  color: "#475569", bg: "#f1f5f9", category: "theme" },
+  { id: "objets_techniques",  label: "Objets techniques",   color: "#475569", bg: "#f1f5f9", category: "theme" },
+
+  // ── Thèmes EMC ──
+  { id: "regles",         label: "Règles",          color: "#0f766e", bg: "#ccfbf1", category: "theme" },
+  { id: "droits",         label: "Droits",          color: "#0f766e", bg: "#ccfbf1", category: "theme" },
+  { id: "institutions",   label: "Institutions",    color: "#0f766e", bg: "#ccfbf1", category: "theme" },
+  { id: "ecologie",       label: "Écologie",        color: "#0f766e", bg: "#ccfbf1", category: "theme" },
+  { id: "vivre_ensemble", label: "Vivre ensemble",  color: "#0f766e", bg: "#ccfbf1", category: "theme" },
+
+  // ── Univers fiction ──
+  { id: "harry_potter",      label: "Harry Potter",          color: "#7c3aed", bg: "#f5f3ff", category: "univers" },
+  { id: "seigneur_anneaux",  label: "Seigneur des anneaux",  color: "#15803d", bg: "#f0fdf4", category: "univers" },
 
   // ── Langues ──
   { id: "anglais",   label: "🇬🇧 Anglais",   color: "#3b82f6", bg: "#eff6ff", category: "langue" },
@@ -98,6 +152,7 @@ export const CATEGORY_LABELS = {
   niveau:       "Niveau",
   matiere:      "Matière",
   theme:        "Thème",
+  univers:      "Univers",
   langue:       "Langue",
   langue_theme: "Thème de langue",
 };
