@@ -13,10 +13,27 @@ import { progressionQuestions } from "./fr/progression.js";
 import { topicExtensionQuestions } from "./fr/topicExtensions.js";
 import { themeBoosterQuestions } from "./fr/themeBoosters.js";
 
-// Each question: { id, q, choices, answer, explanation, difficulty, tags: string[] }
+const EXPLANATION_LABELS = {
+  1: "Astuce",
+  2: "Méthode",
+  3: "Méthode",
+  4: "Méthode",
+  5: "Raisonnement",
+};
+
+const OBVIOUS_DISTRACTOR_RE = /(animal|plan[eè]te|nuage|v[ée]lo|cuisine|papier|poisson|[ée]toile|lune|caillou|magique|dispara[îi]t d[eè]s|sans lien|par hasard|casser les os|faire du feu|faire du pain|provoquer les s[ée]ismes)/i;
+const EXPLANATION_PREFIX_RE = /^(Astuce|Méthode|Raisonnement|Repère|Pour aller plus loin)\s*:/i;
+
+function normalizeExplanation(explanation, difficulty) {
+  const text = String(explanation || "").trim();
+  if (!text || EXPLANATION_PREFIX_RE.test(text)) return text;
+  return `${EXPLANATION_LABELS[difficulty] || "Méthode"} : ${text}`;
+}
+
+// Each question: { id, q, choices, answer, explanation, difficulty, tags: string[], visual? }
 let _id = 1;
-const q = (question, choices, answer, explanation, difficulty, tags) => ({
-  id: _id++, q: question, choices, answer, explanation, difficulty, tags,
+const q = (question, choices, answer, explanation, difficulty, tags, visual) => ({
+  id: _id++, q: question, choices, answer, explanation: normalizeExplanation(explanation, difficulty), difficulty, tags, visual,
 });
 
 const BASE_QUESTIONS = [
@@ -35,10 +52,61 @@ const BASE_QUESTIONS = [
   ...topicExtensionQuestions(q),
 ];
 
-export const ALL_QUESTIONS = [
+function uniqueQuestionsByPrompt(questions) {
+  const seen = new Set();
+  return questions.filter(question => {
+    const key = question.q.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export const ALL_QUESTIONS = uniqueQuestionsByPrompt([
   ...BASE_QUESTIONS,
   ...themeBoosterQuestions(q, BASE_QUESTIONS),
-];
+]);
+
+export function getQuestionQualityWarnings(questions = ALL_QUESTIONS) {
+  const warnings = [];
+  const byPrompt = new Map();
+
+  for (const question of questions) {
+    const prompt = question.q.trim().toLowerCase();
+    byPrompt.set(prompt, [...(byPrompt.get(prompt) || []), question.id]);
+
+    if (question.difficulty >= 4) {
+      const easyChoices = question.choices
+        .filter((choice, index) => index !== question.answer && OBVIOUS_DISTRACTOR_RE.test(choice));
+      if (easyChoices.length > 0) {
+        warnings.push({
+          type: "too-obvious-distractor",
+          id: question.id,
+          level: question.difficulty,
+          q: question.q,
+          choices: easyChoices,
+        });
+      }
+      if (question.explanation.length < 90) {
+        warnings.push({
+          type: "short-high-level-explanation",
+          id: question.id,
+          level: question.difficulty,
+          q: question.q,
+        });
+      }
+    }
+
+  }
+
+  for (const [prompt, ids] of byPrompt.entries()) {
+    if (ids.length > 1) warnings.push({ type: "duplicate-prompt", prompt, ids });
+  }
+
+  return warnings;
+}
+
+export const QUESTION_QUALITY_WARNINGS = getQuestionQualityWarnings();
 
 // Returns questions that have ALL the selected tags (AND logic)
 export function filterQuestions(selectedTags) {

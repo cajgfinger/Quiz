@@ -9,12 +9,21 @@ const MAX_LIVES   = 3;
 const LS_SCORES   = "quizcm_scores_v3";
 const LS_PROFILES = "quizcm_profiles";
 const LS_ACTIVE   = "quizcm_active";
+const LS_REVIEW   = "quizcm_review_bank";
 const MIN_Q       = 3; // minimum questions to start a quiz
 
 const AVATARS = ["🦊","🐸","🦋","🐼","🦄","🐙","🐯","🐧","🦁","🐻","🐨","🦖"];
 const AVATAR_COLORS = [
   "#6366f1","#4ECDC4","#FFD93D","#6BCB77","#f472b6","#fb923c",
   "#38bdf8","#34d399","#f87171","#a78bfa","#60a5fa","#ef4444"
+];
+
+const LEARNING_PATHS = [
+  { id: "cycle3", name: "Consolider CM", tags: ["cm1", "cm2"], desc: "bases avant collège" },
+  { id: "sixfive", name: "6e-5e", tags: ["college"], desc: "repères collège" },
+  { id: "cycle4", name: "4e-3e", tags: ["cycle4"], desc: "raisonnement guidé" },
+  { id: "fractions", name: "Fractions", tags: ["fractions"], desc: "calculs et sens" },
+  { id: "sciences", name: "Sciences visuelles", tags: ["svt"], desc: "schémas et notions" },
 ];
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -36,12 +45,29 @@ const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
 
 function buildNormalDeck(qs)   { return shuffle(qs); }
 function buildRevisionDeck(qs) { return shuffle(qs); }
+function buildSmartRevisionDeck(missed, bank, currentPool) {
+  const seen = new Set();
+  const combined = [...missed, ...bank]
+    .filter(Boolean)
+    .filter(q => {
+      const key = q.id || q.q;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  const relatedTags = new Set(combined.flatMap(q => q.tags || []).filter(t =>
+    !["cp","ce1","ce2","cm1","cm2","college","cycle4","lycee","debutant","inter"].includes(t)
+  ));
+  const related = currentPool
+    .filter(q => !seen.has(q.id || q.q))
+    .filter(q => (q.tags || []).some(t => relatedTags.has(t)))
+    .slice(0, Math.max(3, combined.length));
+  return shuffle([...combined, ...related]).slice(0, Math.max(3, combined.length + Math.min(6, related.length)));
+}
 function buildSurvivalDeck(qs) {
-  const d1 = shuffle(qs.filter(q => q.difficulty === 1));
-  const d2 = shuffle(qs.filter(q => q.difficulty === 2));
-  const d3 = shuffle(qs.filter(q => q.difficulty === 3));
-  // progressive: easy first, then medium, hard, repeat
-  const base = [...d1, ...d2, ...d3];
+  const base = [1, 2, 3, 4, 5].flatMap(level =>
+    shuffle(qs.filter(q => q.difficulty === level))
+  );
   return [...base, ...shuffle(base)]; // double up for longer sessions
 }
 function getSurvivalTimer(qi) {
@@ -49,6 +75,16 @@ function getSurvivalTimer(qi) {
   if (qi < 8)  return 12;
   if (qi < 12) return 10;
   return 8;
+}
+
+function difficultyName(d) {
+  return ({
+    1: "CP-CE2",
+    2: "CM1-CM2",
+    3: "6e-5e",
+    4: "4e-3e",
+    5: "Lycée",
+  })[d] || "Niveau";
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -103,9 +139,203 @@ function TagPill({ tag, selected, count, onClick, small }) {
 }
 
 function DiffBadge({ d }) {
-  const map = { 1: ["★☆☆","#22c55e"], 2: ["★★☆","#FFD93D"], 3: ["★★★","#f43f5e"] };
+  const map = {
+    1: ["★☆☆☆☆","#22c55e"],
+    2: ["★★☆☆☆","#84cc16"],
+    3: ["★★★☆☆","#FFD93D"],
+    4: ["★★★★☆","#fb923c"],
+    5: ["★★★★★","#f43f5e"],
+  };
   const [label, color] = map[d] || map[1];
-  return <span style={{ fontSize: 11, fontWeight: 700, color, letterSpacing: 1 }}>{label}</span>;
+  return <span style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: 1 }}>{label}</span>;
+}
+
+function AnatomyVisual({ highlight }) {
+  const is = part => highlight === part;
+  const active = "#f43f5e";
+  const organ = part => is(part) ? active : "#d6d3e8";
+  const outline = "#6b6685";
+  return (
+    <div className="qvisual" aria-label="Schéma du corps humain avec une zone colorée">
+      <svg viewBox="0 0 180 240" role="img">
+        <title>Schéma anatomique</title>
+        <circle cx="90" cy="28" r="18" fill="#fff7ed" stroke={outline} strokeWidth="2" />
+        <path d="M70 56 Q90 66 110 56 L120 132 Q119 158 104 168 L76 168 Q61 158 60 132 Z" fill="#f8fafc" stroke={outline} strokeWidth="2" />
+        <path d="M66 64 L36 112 M114 64 L144 112 M76 168 L66 222 M104 168 L114 222" stroke={outline} strokeWidth="8" strokeLinecap="round" />
+        <path d="M78 58 V165 M102 58 V165 M72 92 H108 M68 120 H112" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="83" cy="27" r="4" fill={organ("eyes")} stroke={is("eyes") ? "#9f1239" : outline} strokeWidth="1.5" />
+        <circle cx="97" cy="27" r="4" fill={organ("eyes")} stroke={is("eyes") ? "#9f1239" : outline} strokeWidth="1.5" />
+        <path d="M87 89 C72 75 57 89 62 111 C66 128 82 132 88 118 Z" fill={organ("lungs")} stroke={is("lungs") ? "#9f1239" : outline} strokeWidth="1.5" />
+        <path d="M93 89 C108 75 123 89 118 111 C114 128 98 132 92 118 Z" fill={organ("lungs")} stroke={is("lungs") ? "#9f1239" : outline} strokeWidth="1.5" />
+        <path d="M93 105 C84 94 72 103 76 116 C80 129 92 131 96 141 C101 131 114 126 111 113 C109 103 100 99 93 105 Z" fill={organ("heart")} stroke={is("heart") ? "#9f1239" : outline} strokeWidth="1.5" />
+        <path d="M82 139 C101 130 121 145 111 160 C103 173 78 168 74 155 C72 149 75 143 82 139 Z" fill={organ("stomach")} stroke={is("stomach") ? "#9f1239" : outline} strokeWidth="1.5" />
+      </svg>
+    </div>
+  );
+}
+
+function SkeletonVisual({ highlight }) {
+  const is = part => highlight === part;
+  const active = "#f43f5e";
+  const bone = part => is(part) ? active : "#e5e7eb";
+  const outline = "#64748b";
+  return (
+    <div className="qvisual" aria-label="Schéma du squelette avec une zone colorée">
+      <svg viewBox="0 0 180 240" role="img">
+        <title>Schéma du squelette</title>
+        <circle cx="90" cy="30" r="17" fill={bone("skull")} stroke={is("skull") ? "#9f1239" : outline} strokeWidth="2" />
+        <path d="M82 47 H98 M90 47 V68" stroke={outline} strokeWidth="4" strokeLinecap="round" />
+        <path d="M68 72 H112 M74 86 H106 M78 100 H102" stroke={bone("ribs")} strokeWidth="7" strokeLinecap="round" />
+        <path d="M90 68 V148" stroke={outline} strokeWidth="5" strokeLinecap="round" />
+        <path d="M68 74 L38 120 M112 74 L142 120" stroke={outline} strokeWidth="7" strokeLinecap="round" />
+        <path d="M74 150 H106" stroke={outline} strokeWidth="8" strokeLinecap="round" />
+        <path d="M78 154 L66 222" stroke={bone("femur")} strokeWidth="9" strokeLinecap="round" />
+        <path d="M102 154 L114 222" stroke={bone("femur")} strokeWidth="9" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+function WaterStateVisual({ highlight }) {
+  const is = state => highlight === state;
+  return (
+    <div className="qvisual qvisual-wide" aria-label="Schéma des états de l'eau">
+      <svg viewBox="0 0 260 120" role="img">
+        <title>États de l'eau</title>
+        <rect x="15" y="40" width="55" height="55" rx="8" fill={is("solid") ? "#38bdf8" : "#e0f2fe"} stroke="#0369a1" strokeWidth="2" />
+        <path d="M28 54 L58 84 M58 54 L28 84" stroke="#0369a1" strokeWidth="2" />
+        <path d="M112 44 C98 62 91 74 91 84 C91 101 105 111 122 111 C139 111 153 101 153 84 C153 74 146 62 132 44 C128 37 126 31 122 24 C118 31 116 37 112 44 Z" fill={is("liquid") ? "#2563eb" : "#dbeafe"} stroke="#1d4ed8" strokeWidth="2" />
+        <path d="M191 83 C203 68 184 62 196 48 C207 35 191 29 203 17 M219 91 C232 75 211 68 224 51 C235 37 220 30 232 18" fill="none" stroke={is("gas") ? "#f43f5e" : "#94a3b8"} strokeWidth="5" strokeLinecap="round" />
+        <text x="42" y="112" textAnchor="middle" fontSize="12" fontWeight="700" fill="#334155">solide</text>
+        <text x="122" y="112" textAnchor="middle" fontSize="12" fontWeight="700" fill="#334155">liquide</text>
+        <text x="214" y="112" textAnchor="middle" fontSize="12" fontWeight="700" fill="#334155">gaz</text>
+      </svg>
+    </div>
+  );
+}
+
+function CircuitVisual({ highlight }) {
+  const active = "#f43f5e";
+  const wire = "#475569";
+  const is = part => highlight === part;
+  return (
+    <div className="qvisual qvisual-wide" aria-label="Schéma de circuit électrique">
+      <svg viewBox="0 0 260 130" role="img">
+        <title>Circuit électrique</title>
+        <path d="M58 64 H106 M154 64 H206 M58 64 V96 H206 V64" fill="none" stroke={wire} strokeWidth="5" strokeLinecap="round" />
+        <rect x="26" y="47" width="32" height="34" rx="4" fill={is("battery") ? active : "#e2e8f0"} stroke="#334155" strokeWidth="2" />
+        <path d="M35 40 V48 M49 36 V48" stroke="#334155" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="130" cy="64" r="24" fill={is("lamp") ? "#fde047" : "#f8fafc"} stroke="#334155" strokeWidth="3" />
+        <path d="M118 64 C122 50 138 50 142 64 C136 72 124 72 118 64 Z" fill="none" stroke="#334155" strokeWidth="2" />
+        <path d="M198 52 L230 37" stroke={is("switch") ? active : "#334155"} strokeWidth="6" strokeLinecap="round" />
+        <circle cx="198" cy="52" r="5" fill="#334155" />
+        <circle cx="232" cy="36" r="5" fill="#334155" />
+      </svg>
+    </div>
+  );
+}
+
+function FoodChainVisual({ highlight }) {
+  const is = part => highlight === part;
+  const box = (x, label, part, color) => (
+    <g>
+      <rect x={x} y="36" width="62" height="48" rx="10" fill={is(part) ? color : "#f8fafc"} stroke={is(part) ? "#9f1239" : "#cbd5e1"} strokeWidth="2" />
+      <text x={x + 31} y="64" textAnchor="middle" fontSize="12" fontWeight="800" fill="#1e293b">{label}</text>
+    </g>
+  );
+  return (
+    <div className="qvisual qvisual-wide" aria-label="Schéma d'une chaîne alimentaire">
+      <svg viewBox="0 0 270 120" role="img">
+        <title>Chaîne alimentaire</title>
+        {box(8, "Plante", "producer", "#bbf7d0")}
+        {box(104, "Chenille", "consumer", "#fde68a")}
+        {box(200, "Oiseau", "predator", "#bfdbfe")}
+        <path d="M74 60 H98 M170 60 H194" stroke="#64748b" strokeWidth="4" strokeLinecap="round" />
+        <path d="M96 52 L104 60 L96 68 M192 52 L200 60 L192 68" fill="none" stroke="#64748b" strokeWidth="4" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+function MapVisual({ highlight }) {
+  const is = part => highlight === part;
+  const active = "#f43f5e";
+  const land = "#e2e8f0";
+  return (
+    <div className="qvisual qvisual-wide" aria-label="Carte simplifiée avec une zone colorée">
+      <svg viewBox="0 0 260 150" role="img">
+        <title>Carte simplifiée</title>
+        <rect width="260" height="150" rx="14" fill="#eff6ff" />
+        <path d="M78 38 L112 30 L129 48 L121 77 L98 91 L72 76 L63 55 Z" fill={is("france") ? active : land} stroke="#64748b" strokeWidth="2" />
+        <path d="M132 31 L166 36 L173 69 L153 85 L124 75 L130 49 Z" fill={is("germany") ? active : land} stroke="#64748b" strokeWidth="2" />
+        <path d="M139 88 C158 88 168 102 165 126 C158 127 150 118 147 107 C143 103 135 102 139 88 Z" fill={is("italy") ? active : land} stroke="#64748b" strokeWidth="2" />
+        <path d="M57 86 L88 91 L92 119 L60 122 L44 104 Z" fill={is("spain") ? active : land} stroke="#64748b" strokeWidth="2" />
+        <path d="M23 55 L43 44 L56 61 L45 80 L26 75 Z" fill={is("uk") ? active : land} stroke="#64748b" strokeWidth="2" />
+      </svg>
+    </div>
+  );
+}
+
+function RectangleVisual({ width = 8, height = 5, highlight }) {
+  const active = highlight === "area";
+  return (
+    <div className="qvisual qvisual-wide" aria-label="Schéma d'un rectangle coloré">
+      <svg viewBox="0 0 260 140" role="img">
+        <title>Rectangle</title>
+        <rect x="55" y="30" width="150" height="80" rx="4" fill={active ? "#bfdbfe" : "#f8fafc"} stroke="#1d4ed8" strokeWidth="3" />
+        <path d="M55 116 H205 M49 30 V110" stroke="#475569" strokeWidth="2" />
+        <path d="M55 121 L55 111 M205 121 L205 111 M44 30 H54 M44 110 H54" stroke="#475569" strokeWidth="2" />
+        <text x="130" y="134" textAnchor="middle" fontSize="14" fontWeight="800" fill="#334155">{width} cm</text>
+        <text x="28" y="74" textAnchor="middle" fontSize="14" fontWeight="800" fill="#334155" transform="rotate(-90 28 74)">{height} cm</text>
+        <text x="130" y="76" textAnchor="middle" fontSize="18" fontWeight="900" fill="#1d4ed8">aire</text>
+      </svg>
+    </div>
+  );
+}
+
+function TimelineVisual({ highlight }) {
+  const active = period => highlight === period;
+  const segment = (x, w, label, period) => (
+    <g>
+      <rect x={x} y="48" width={w} height="26" rx="5" fill={active(period) ? "#f43f5e" : "#e2e8f0"} stroke={active(period) ? "#9f1239" : "#94a3b8"} strokeWidth="2" />
+      <text x={x + w / 2} y="95" textAnchor="middle" fontSize="10" fontWeight="800" fill="#334155">{label}</text>
+    </g>
+  );
+  return (
+    <div className="qvisual qvisual-wide" aria-label="Frise chronologique avec une période colorée">
+      <svg viewBox="0 0 280 125" role="img">
+        <title>Frise chronologique</title>
+        <path d="M18 61 H262" stroke="#475569" strokeWidth="4" strokeLinecap="round" />
+        {segment(20, 58, "Préhistoire", "prehistoire")}
+        {segment(82, 54, "Antiquité", "antiquite")}
+        {segment(140, 50, "Moyen Âge", "moyen_age")}
+        {segment(194, 42, "Renaissance", "renaissance")}
+        {segment(240, 22, "Actuel", "contemporain")}
+      </svg>
+    </div>
+  );
+}
+
+function FlagVisual({ flag }) {
+  return (
+    <div className="qvisual qvisual-flag" aria-label="Drapeau à identifier">
+      <div className="flag-emoji">{flag}</div>
+    </div>
+  );
+}
+
+function QuestionVisual({ visual }) {
+  if (!visual) return null;
+  if (visual.type === "anatomy") return <AnatomyVisual highlight={visual.highlight} />;
+  if (visual.type === "skeleton") return <SkeletonVisual highlight={visual.highlight} />;
+  if (visual.type === "water-state") return <WaterStateVisual highlight={visual.highlight} />;
+  if (visual.type === "circuit") return <CircuitVisual highlight={visual.highlight} />;
+  if (visual.type === "food-chain") return <FoodChainVisual highlight={visual.highlight} />;
+  if (visual.type === "map") return <MapVisual highlight={visual.highlight} />;
+  if (visual.type === "rectangle") return <RectangleVisual width={visual.width} height={visual.height} highlight={visual.highlight} />;
+  if (visual.type === "timeline") return <TimelineVisual highlight={visual.highlight} />;
+  if (visual.type === "flag") return <FlagVisual flag={visual.flag} />;
+  return null;
 }
 
 function TimerRing({ value, max, color }) {
@@ -193,6 +423,14 @@ body{font-family:'Nunito',sans-serif;background:#0f0e17;min-height:100vh;display
 .filter-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .filter-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .filter-count{font-size:11px;font-weight:800;color:#aaa;background:white;border:2px solid #eeecff;border-radius:999px;padding:4px 8px;white-space:nowrap}
+.level-guide{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.level-guide span{background:white;border:2px solid #eeecff;border-radius:10px;padding:6px 4px;text-align:center;font-size:10px;font-weight:800;color:#6b6685;white-space:nowrap}
+.path-panel{display:flex;flex-direction:column;gap:8px;background:#fff;border:2px solid #e8e6ff;border-radius:14px;padding:11px 12px;box-shadow:0 2px 7px rgba(0,0,0,.04)}
+.path-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.path-chip{border:2px solid #eeecff;background:#f8f7ff;border-radius:11px;padding:8px 9px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:1px;min-width:0;transition:all .15s}
+.path-chip span{font-family:'Baloo 2',cursive;font-size:13px;font-weight:800;color:#1a1a2e;line-height:1.1}
+.path-chip small{font-size:10px;font-weight:700;color:#8e88a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.path-chip.active,.path-chip:hover{border-color:var(--sc);background:#fff}
 .tag-group{display:flex;flex-direction:column;gap:8px;background:white;border:2px solid #eeecff;border-radius:14px;padding:11px 12px;box-shadow:0 2px 7px rgba(0,0,0,.04)}
 .tag-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tag-group-count{font-size:10px;font-weight:800;color:#b7b3c7;background:#f8f7ff;border-radius:999px;padding:2px 7px;white-space:nowrap}
@@ -244,6 +482,11 @@ body{font-family:'Nunito',sans-serif;background:#0f0e17;min-height:100vh;display
 .qcard-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
 .qlabel{font-size:10px;font-weight:700;color:#ccc;text-transform:uppercase;letter-spacing:.5px}
 .qtext{font-family:'Baloo 2',cursive;font-size:16px;font-weight:700;color:#1a1a2e;line-height:1.35}
+.qvisual{width:100%;max-width:190px;margin:9px auto 0;background:#f8fafc;border:2px solid #e4e2f5;border-radius:13px;padding:8px;display:flex;align-items:center;justify-content:center}
+.qvisual-wide{max-width:260px}
+.qvisual-flag{max-width:160px;min-height:92px;background:#fff}
+.flag-emoji{font-size:66px;line-height:1}
+.qvisual svg{width:100%;height:auto;display:block}
 .choices{display:flex;flex-direction:column;gap:7px}
 .choice{background:white;border:2.5px solid #e4e2f5;border-radius:11px;padding:9px 13px;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;color:#2d2d2d;transition:all .12s;box-shadow:0 2px 5px rgba(0,0,0,.03);text-align:left}
 .cl{width:25px;height:25px;border-radius:50%;background:#f0eeff;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',cursive;font-weight:800;font-size:11px;color:#999;flex-shrink:0;transition:all .12s}
@@ -329,6 +572,7 @@ export default function App() {
   const [streak, setStreak]     = useState(0);
   const [missedQs, setMissedQs] = useState([]);
   const [lastMissed, setLastMissed] = useState([]);
+  const [reviewBank, setReviewBank] = useState(() => load(LS_REVIEW, []));
   const [totalScore, setTotalScore] = useState(0);
 
   // ── Derived ──
@@ -395,14 +639,25 @@ export default function App() {
     const base = filteredQs.length > 0 ? filteredQs : ALL_QUESTIONS;
     let d;
     if (m === "survival")        d = buildSurvivalDeck(base);
-    else if (m === "revision")   d = buildRevisionDeck(revDeck || lastMissed);
+    else if (m === "revision")   d = buildRevisionDeck(revDeck || buildSmartRevisionDeck(lastMissed, reviewBank, base));
     else                         d = buildNormalDeck(base);
     setMode(m); setDeck(d);
     setQIndex(0); setSelected(null); setScore(0);
     setLives(MAX_LIVES); setStreak(0); setMissedQs([]);
     setTimer(m === "survival" ? getSurvivalTimer(0) : TIMER_MAX);
     setScreen("quiz");
-  }, [filteredQs, lastMissed]);
+  }, [filteredQs, lastMissed, reviewBank]);
+
+  const addToReviewBank = useCallback((questions) => {
+    if (!questions?.length) return;
+    setReviewBank(prev => {
+      const byKey = new Map(prev.map(q => [q.id || q.q, q]));
+      for (const question of questions) byKey.set(question.id || question.q, question);
+      const next = [...byKey.values()].slice(-40);
+      store(LS_REVIEW, next);
+      return next;
+    });
+  }, []);
 
   // ── Answer ──
   const handleChoice = useCallback((idx) => {
@@ -410,8 +665,13 @@ export default function App() {
     setSelected(idx);
     const correct = idx === currentQ.answer;
     if (correct) { setScore(s => s + 1); setStreak(s => s + 1); }
-    else { setStreak(0); setMissedQs(prev => [...prev, currentQ]); if (mode === "survival") setLives(l => l - 1); }
-  }, [selected, currentQ, mode]);
+    else {
+      setStreak(0);
+      setMissedQs(prev => [...prev, currentQ]);
+      addToReviewBank([currentQ]);
+      if (mode === "survival") setLives(l => l - 1);
+    }
+  }, [selected, currentQ, mode, addToReviewBank]);
 
   // ── Next ──
   const handleNext = useCallback(() => {
@@ -420,6 +680,7 @@ export default function App() {
     const nextMissedQs = timedOut ? [...missedQs, currentQ] : missedQs;
     if (timedOut) {
       setMissedQs(nextMissedQs);
+      addToReviewBank([currentQ]);
       setStreak(0);
       if (mode === "survival") setLives(nextLives);
     }
@@ -609,6 +870,34 @@ export default function App() {
               </div>
             </div>
 
+            <div className="level-guide">
+              <span>1 CP-CE2</span>
+              <span>2 CM1-CM2</span>
+              <span>3 6e-5e</span>
+              <span>4 4e-3e</span>
+              <span>5 Lycée</span>
+            </div>
+
+            <div className="path-panel">
+              <div className="tag-group-head">
+                <div className="slabel">Parcours rapides</div>
+                <div className="tag-group-count">{LEARNING_PATHS.length}</div>
+              </div>
+              <div className="path-row">
+                {LEARNING_PATHS.map(path => {
+                  const active = path.tags.every(tag => selectedTags.includes(tag));
+                  return (
+                    <button key={path.id}
+                      className={`path-chip ${active ? "active" : ""}`}
+                      onClick={() => setSelectedTags(path.tags)}>
+                      <span>{path.name}</span>
+                      <small>{path.desc}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Tag groups */}
             {visibleGroups.length > 0 ? (
               visibleGroups.map(([cat, tags]) => (
@@ -686,14 +975,14 @@ export default function App() {
                 <div className="mcard-name">Survie</div>
                 <div className="mcard-desc">3 vies · Difficulté croissante</div>
               </div>
-              <div className={`mcard revision mcard-full ${lastMissed.length === 0 ? "disabled" : ""}`}
-                onClick={() => lastMissed.length > 0 && startQuiz("revision")}>
+              <div className={`mcard revision mcard-full ${lastMissed.length === 0 && reviewBank.length === 0 ? "disabled" : ""}`}
+                onClick={() => (lastMissed.length > 0 || reviewBank.length > 0) && startQuiz("revision")}>
                 <div className="mcard-icon">📖</div>
                 <div className="mcard-name">Révision</div>
                 <div className="mcard-desc">
-                  {lastMissed.length === 0
+                  {lastMissed.length === 0 && reviewBank.length === 0
                     ? "Fais d'abord une partie pour débloquer"
-                    : `Rejoue les ${lastMissed.length} question${lastMissed.length > 1 ? "s" : ""} ratée${lastMissed.length > 1 ? "s" : ""}`}
+                    : `Erreurs + questions du même thème`}
                 </div>
               </div>
             </div>
@@ -758,12 +1047,13 @@ export default function App() {
                 <div className="qcard-head">
                   <div className="qlabel">
                     {mode === "survival"
-                      ? qIndex < 4 ? "Facile" : qIndex < 8 ? "Moyen" : "Difficile"
-                      : mode === "revision" ? "À réviser" : "Question"}
+                      ? difficultyName(currentQ.difficulty)
+                      : mode === "revision" ? "À réviser" : difficultyName(currentQ.difficulty)}
                   </div>
                   <DiffBadge d={currentQ.difficulty} />
                 </div>
                 <div className="qtext">{currentQ.q}</div>
+                <QuestionVisual visual={currentQ.visual} />
               </div>
             </div>
 

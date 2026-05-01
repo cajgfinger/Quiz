@@ -2,10 +2,10 @@ import { TAGS } from "../../tags.js";
 
 const TARGET_CATEGORIES = new Set(["theme", "univers", "langue", "langue_theme"]);
 
-const LEVELS = ["cp", "ce1", "ce2", "cm1", "cm2", "college", "lycee"];
+const LEVELS = ["cp", "ce1", "ce2", "cm1", "cm2", "college", "cycle4", "lycee"];
 const DIFFICULTY_BY_LEVEL = {
-  cp: 1, ce1: 1, ce2: 1, cm1: 1, cm2: 2, college: 2, lycee: 3,
-  debutant: 1, inter: 2,
+  cp: 1, ce1: 1, ce2: 1, cm1: 2, cm2: 2, college: 3, cycle4: 4, lycee: 5,
+  debutant: 1, inter: 3,
 };
 
 const SUBJECT_BY_TAG = {
@@ -38,15 +38,47 @@ const GENERIC_WRONGS = [
   "Une capitale", "Un personnage", "Un instrument", "Une saison",
 ];
 
+const OBVIOUS_WRONG_RE = /(animal|plan[eè]te|nuage|poisson|[ée]toile|lune|magique|carte papier|volcan|baguette|dinosaures|orbites|saisons|m[ée]t[ée]o|conjuguer)/i;
+const ADVANCED_GENERIC_WRONGS = [
+  "Une confusion avec une notion voisine",
+  "Une réponse vraie dans un autre contexte",
+  "Une conséquence possible mais non suffisante",
+  "Une définition trop partielle",
+  "Un exemple au lieu du principe général",
+];
+
+function fallbackWrongs(correct, difficulty) {
+  const asNumber = Number(String(correct).replace(",", ".").replace(/[^\d.-]/g, ""));
+  if (difficulty >= 4 && Number.isFinite(asNumber)) {
+    const unit = String(correct).replace(String(asNumber), "").trim();
+    return [
+      `${asNumber + 1}${unit ? ` ${unit}` : ""}`,
+      `${Math.max(0, asNumber - 1)}${unit ? ` ${unit}` : ""}`,
+      `${asNumber + 3}${unit ? ` ${unit}` : ""}`,
+      `${Math.max(0, asNumber * 2)}${unit ? ` ${unit}` : ""}`,
+    ];
+  }
+  return difficulty >= 4 ? ADVANCED_GENERIC_WRONGS : GENERIC_WRONGS;
+}
+
+function normalizeGeneratedExplanation(explanation, difficulty, correct) {
+  const text = String(explanation || "").trim();
+  if (difficulty < 4 || text.length >= 95) return text;
+  return `${text} Pour vérifier, on repère la notion demandée puis on élimine les réponses qui décrivent seulement un exemple ou une confusion proche.`;
+}
+
 function rotateQuestion(q, text, correct, wrongs, explanation, difficulty, tags, offset) {
-  const choices = [correct, ...wrongs].filter((v, i, arr) => v && arr.indexOf(v) === i).slice(0, 4);
-  for (const wrong of GENERIC_WRONGS) {
+  const cleanWrongs = difficulty >= 4
+    ? wrongs.filter(wrong => !OBVIOUS_WRONG_RE.test(wrong))
+    : wrongs;
+  const choices = [correct, ...cleanWrongs].filter((v, i, arr) => v && arr.indexOf(v) === i).slice(0, 4);
+  for (const wrong of fallbackWrongs(correct, difficulty)) {
     if (choices.length >= 4) break;
     if (!choices.includes(wrong) && wrong !== correct) choices.push(wrong);
   }
   const shift = offset % choices.length;
   const rotated = [...choices.slice(shift), ...choices.slice(0, shift)];
-  return q(text, rotated, rotated.indexOf(correct), explanation, difficulty, tags);
+  return q(text, rotated, rotated.indexOf(correct), normalizeGeneratedExplanation(explanation, difficulty, correct), difficulty, tags);
 }
 
 function variantText(base, label, n) {
@@ -113,7 +145,7 @@ const FACT_PACKS = {
   republique: [
     card("La devise de la République française est :", "Liberté, Égalité, Fraternité", ["Travail, Famille, Patrie", "Force, Courage, Victoire", "Paix, Mer, Montagne"], "Cette devise figure sur de nombreux bâtiments publics."),
     card("En France, le président de la République est élu par :", "les citoyens", ["les montagnes", "les départements seuls", "les rois"], "Les citoyens votent au suffrage universel."),
-    card("Le drapeau français est :", "bleu, blanc, rouge", ["vert, blanc, rouge", "noir, rouge, jaune", "bleu, jaune, vert"], "Ce sont les trois couleurs nationales."),
+    card("Dans une démocratie, le pluralisme signifie :", "plusieurs opinions peuvent s'exprimer", ["un seul parti décide toujours", "le vote est interdit", "les lois changent chaque jour"], "Le pluralisme permet le débat public et l'existence de plusieurs courants politiques."),
     card("La Marseillaise est :", "l'hymne national français", ["un fleuve", "une monnaie", "un volcan"], "Un hymne national représente un pays."),
   ],
   napoleon: [
@@ -219,7 +251,7 @@ const FACT_PACKS = {
     card("La capitale du Royaume-Uni est :", "Londres", ["Dublin", "Édimbourg", "Cardiff"], "Londres est la capitale du Royaume-Uni."),
   ],
   drapeaux: [
-    card("Le drapeau français est :", "bleu, blanc, rouge", ["vert, blanc, rouge", "noir, rouge, jaune", "bleu, jaune, vert"], "Ce sont les couleurs nationales françaises."),
+    card("Le drapeau de l'Afrique du Sud se reconnaît notamment à :", "une forme en Y verte", ["une feuille d'érable", "un disque rouge", "douze étoiles en cercle"], "La forme en Y symbolise souvent la convergence de plusieurs composantes du pays."),
     card("Le drapeau du Japon représente notamment :", "un disque rouge", ["une étoile verte", "trois lunes", "une feuille d'érable"], "Le disque rouge évoque le soleil."),
     card("Le drapeau italien est :", "vert, blanc, rouge", ["bleu, blanc, rouge", "noir, jaune, rouge", "rouge et blanc"], "Il est composé de trois bandes verticales."),
     card("La feuille d'érable est sur le drapeau du :", "Canada", ["Brésil", "Maroc", "Portugal"], "C'est un symbole canadien connu."),
@@ -467,27 +499,27 @@ function mathGenerated(tag, n) {
   const difficulty = DIFFICULTY_BY_LEVEL[level];
   const tags = [level, "maths", tag];
   if (tag === "multiplication") {
-    const a = 2 + (n % 11), b = 2 + ((n * 3) % 10), r = a * b;
+    const a = 2 + ((n * 5) % 12), b = 2 + ((n * 7) % 11), r = a * b;
     return [`Combien font ${a} × ${b} ?`, String(r), [String(r + a), String(r - b), String(r + 10)], `${a} × ${b} = ${r}.`, difficulty, tags];
   }
   if (tag === "division") {
-    const b = 2 + (n % 10), r = 2 + ((n * 2) % 12), a = b * r;
+    const b = 2 + ((n * 7) % 12), r = 2 + ((n * 5) % 17), a = b * r;
     return [`Combien font ${a} ÷ ${b} ?`, String(r), [String(r + 1), String(Math.max(1, r - 1)), String(r + 3)], `${a} ÷ ${b} = ${r}.`, difficulty, tags];
   }
   if (tag === "fractions") {
-    const den = 2 + (n % 8), num = 1 + (n % den);
+    const den = 3 + ((n * 5) % 11), num = 1 + ((n * 7) % (den - 1));
     return [`Dans la fraction ${num}/${den}, le dénominateur est :`, String(den), [String(num), String(num + den), String(den + 1)], `Le dénominateur est le nombre placé sous la barre de fraction.`, difficulty, tags];
   }
   if (tag === "geometrie") {
-    const l = 3 + (n % 10), w = 2 + ((n * 2) % 8), p = 2 * (l + w);
+    const l = 3 + ((n * 7) % 17), w = 2 + ((n * 5) % 13), p = 2 * (l + w);
     return [`Un rectangle mesure ${l} cm sur ${w} cm. Quel est son périmètre ?`, `${p} cm`, [`${l * w} cm`, `${l + w} cm`, `${p + 4} cm`], `Périmètre = 2 × (${l} + ${w}) = ${p} cm.`, difficulty, tags];
   }
   if (tag === "decimaux") {
-    const value = (12 + n) / 10;
+    const value = (12 + n * 3) / 10;
     return [`${value.toFixed(1).replace(".", ",")} × 10 = ?`, String(Math.round(value * 10)), [value.toFixed(1).replace(".", ","), String(Math.round(value)), String(Math.round(value * 100))], `Multiplier par 10 décale la virgule vers la droite.`, difficulty, tags];
   }
   if (tag === "mesures") {
-    const m = 1 + (n % 9);
+    const m = 1 + n;
     return [`${m} mètre${m > 1 ? "s" : ""} = combien de centimètres ?`, `${m * 100} cm`, [`${m * 10} cm`, `${m} cm`, `${m * 1000} cm`], `1 m = 100 cm, donc ${m} m = ${m * 100} cm.`, difficulty, tags];
   }
   if (tag === "calcul") {
@@ -499,23 +531,23 @@ function mathGenerated(tag, n) {
     return [`Dans le nombre ${value}, le chiffre des dizaines est :`, String(tens), [String(units), String(value), String(tens + units)], `Le chiffre des dizaines indique le nombre de paquets de 10.`, difficulty, tags];
   }
   if (tag === "problemes") {
-    const packs = 2 + (n % 6), each = 3 + (n % 7), total = packs * each;
+    const packs = 2 + ((n * 5) % 14), each = 3 + ((n * 7) % 16), total = packs * each;
     return [`${packs} boîtes contiennent ${each} crayons chacune. Combien y a-t-il de crayons ?`, String(total), [String(total + each), String(total - each), String(packs + each)], `On calcule ${packs} × ${each} = ${total}.`, difficulty, tags];
   }
   if (tag === "proportionnalite") {
-    const a = 2 + (n % 5), price = a * 3, b = a * 2;
-    return [`Si ${a} cahiers coûtent ${price} €, combien coûtent ${b} cahiers ?`, `${price * 2} €`, [`${price + 3} €`, `${price} €`, `${price * 3} €`], `${b} cahiers, c'est deux fois ${a}, donc le prix double.`, difficulty, tags];
+    const a = 2 + ((n * 3) % 11), multiplier = 2 + (n % 3), unitPrice = 2 + ((n * 5) % 9), price = a * unitPrice, b = a * multiplier;
+    return [`Si ${a} cahiers coûtent ${price} €, combien coûtent ${b} cahiers ?`, `${price * multiplier} €`, [`${price + unitPrice} €`, `${price} €`, `${price * (multiplier + 1)} €`], `${b} cahiers, c'est ${multiplier} fois ${a}, donc le prix est multiplié par ${multiplier}.`, difficulty, tags];
   }
   if (tag === "statistiques") {
-    const a = 8 + (n % 5), b = a + 2, c = a + 4, avg = a + 2;
+    const a = 6 + n, b = a + 3, c = a + 6, avg = a + 3;
     return [`Quelle est la moyenne de ${a}, ${b} et ${c} ?`, String(avg), [String(a), String(c), String(a + b + c)], `(${a} + ${b} + ${c}) ÷ 3 = ${avg}.`, difficulty, tags];
   }
   if (tag === "probabilites") {
-    const faces = 4 + (n % 5);
+    const faces = 4 + n;
     return [`Avec une roue équilibrée de ${faces} cases, la probabilité de tomber sur une case précise est :`, `1/${faces}`, [`1/2`, `${faces}/1`, `1/${faces + 1}`], `Il y a une case favorable sur ${faces}.`, difficulty, tags];
   }
   if (tag === "algebre") {
-    const x = 2 + (n % 9), add = 1 + (n % 7), total = x + add;
+    const x = 2 + n, add = 1 + ((n * 3) % 17), total = x + add;
     return [`Si x + ${add} = ${total}, alors x vaut :`, String(x), [String(x + add), String(add), String(total)], `On retire ${add} des deux côtés : x = ${x}.`, difficulty, tags];
   }
   return null;
